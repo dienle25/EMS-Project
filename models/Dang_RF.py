@@ -16,7 +16,6 @@ test_df = pd.read_csv(TEST_FILE)
 # ENCODE CÁC CỘT DẠNG CHỮ (ONE-HOT ENCODING)
 # =====================================================================
 full_df = pd.concat([train_df, test_df], axis=0)
-
 full_df = pd.get_dummies(full_df)
 
 train_df = full_df.iloc[:len(train_df), :]
@@ -32,15 +31,21 @@ X_test = test_df.drop(columns=['exam_score'])
 y_test = test_df['exam_score']
 
 # =====================================================================
-# RANDOM FOREST
+# RANDOM FOREST (TUNED VERSION)
 # =====================================================================
 from sklearn.ensemble import RandomForestRegressor
 
 model = RandomForestRegressor(
-    n_estimators=200,
-    random_state=42
+    n_estimators=800,
+    max_depth=20,
+    min_samples_split=4,
+    min_samples_leaf=1,
+    max_features='sqrt',
+    random_state=42,
+    n_jobs=-1
 )
 
+print("Đang huấn luyện mô hình Random Forest...")
 model.fit(X_train, y_train)
 
 # =====================================================================
