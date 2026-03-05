@@ -14,8 +14,8 @@ from sklearn.model_selection import train_test_split
 # LOAD DATA
 # ==========================================================
 
-TRAIN_FILE = 'data/train_91_norm.csv'
-TEST_FILE = 'data/test_91_norm.csv'
+TRAIN_FILE = r'/data/train_91_norm.csv'
+TEST_FILE = r'/data/test_91_norm.csv'
 
 print("Đang tải dữ liệu...")
 train_df = pd.read_csv(TRAIN_FILE)

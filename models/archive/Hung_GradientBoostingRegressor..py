@@ -9,8 +9,8 @@ from sklearn.pipeline import Pipeline
 # =====================================================================
 # PHẦN 1: TẢI DỮ LIỆU ĐÃ ĐƯỢC LEADER CHUẨN BỊ (Tỷ lệ 9/1)
 # =====================================================================
-TRAIN_FILE = 'train_91_norm.csv'
-TEST_FILE = 'test_91_norm.csv'
+TRAIN_FILE = r'/data/train_91_norm.csv'
+TEST_FILE = r'/data/test_91_norm.csv'
 
 print("Đang tải dữ liệu...")
 train_df = pd.read_csv(TRAIN_FILE)
