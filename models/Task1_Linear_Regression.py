@@ -1,19 +1,13 @@
 import pandas as pd
-import os
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 
 # ==============================
-# LOAD DATA (đổi sang file đúng)
+# LOAD DATA
 # ==============================
 
-data_path = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "data",
-    "dataADY201m_cleaned_normalized.csv"
-)
+data_path = "data/dataADY201m_cleaned_normalized.csv"
 
 print("Loading file:", data_path)
 
@@ -26,11 +20,9 @@ print(data.head())
 # DATA PREPROCESS
 # ==============================
 
-# bỏ student_id nếu có
 if "student_id" in data.columns:
     data = data.drop("student_id", axis=1)
 
-# chuyển dữ liệu text -> number
 data = pd.get_dummies(data)
 
 # ==============================
@@ -51,7 +43,6 @@ X_train, X_test, y_train, y_test = train_test_split(
 # ==============================
 
 model = LinearRegression()
-
 model.fit(X_train, y_train)
 
 # ==============================
@@ -61,7 +52,7 @@ model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 
 # ==============================
-# EVALUATE MODEL
+# EVALUATE
 # ==============================
 
 mse = mean_squared_error(y_test, y_pred)
