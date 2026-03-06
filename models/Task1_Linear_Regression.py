@@ -4,46 +4,66 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 
-# đường dẫn file
-data_path = os.path.join(os.path.dirname(__file__), '..', 'data', '04_Normalized_Data.csv')
+# ==============================
+# LOAD DATA (đổi sang file đúng)
+# ==============================
+
+data_path = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "data",
+    "dataADY201m_cleaned_normalized.csv"
+)
 
 print("Loading file:", data_path)
 
-# đọc data
 data = pd.read_csv(data_path)
 
 print("Dataset shape:", data.shape)
 print(data.head())
 
-# bỏ student_id vì không cần
+# ==============================
+# DATA PREPROCESS
+# ==============================
+
+# bỏ student_id nếu có
 if "student_id" in data.columns:
     data = data.drop("student_id", axis=1)
 
-# convert text -> number
+# chuyển dữ liệu text -> number
 data = pd.get_dummies(data)
 
-print("\nAfter Encoding:")
-print(data.head())
+# ==============================
+# SPLIT DATA
+# ==============================
 
-# tách X và y
 X = data.drop("exam_score", axis=1)
 y = data["exam_score"]
 
-# chia train test
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X, y,
+    test_size=0.2,
+    random_state=42
 )
 
-# tạo model
+# ==============================
+# TRAIN MODEL
+# ==============================
+
 model = LinearRegression()
 
-# train
 model.fit(X_train, y_train)
 
-# predict
+# ==============================
+# PREDICT
+# ==============================
+
 y_pred = model.predict(X_test)
 
-# đánh giá
+# ==============================
+# EVALUATE MODEL
+# ==============================
+
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
 
