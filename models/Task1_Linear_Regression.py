@@ -1,63 +1,88 @@
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+from sklearn.utils import shuffle
 
-# ==============================
-# LOAD DATA
-# ==============================
+# 1. Đọc dữ liệu
+df = pd.read_csv('04_Normalized_Data.csv')
 
-data_path = "dataADY201m_cleaned_normalized.csv"
+# Xác định features (X) và target (y)
+X = df.drop(columns=['exam_score'])
+y = df['exam_score']
 
-print("Loading file:", data_path)
+# 2. Phân loại các cột để cấu hình Preprocessor
+categorical_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
 
-data = pd.read_csv(data_path)
-
-print("Dataset shape:", data.shape)
-print(data.head())
-
-# ==============================
-# DATA PREPROCESS
-# ==============================
-
-if "student_id" in data.columns:
-    data = data.drop("student_id", axis=1)
-
-data = pd.get_dummies(data)
-
-# ==============================
-# SPLIT DATA
-# ==============================
-
-X = data.drop("exam_score", axis=1)
-y = data["exam_score"]
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42
+# 3. Tạo Preprocessor
+preprocessor = ColumnTransformer(
+    transformers=[
+        # Loại bỏ cột student_id
+        ('drop_id', 'drop', ['student_id']),
+        # Mã hoá One-Hot các cột phân loại
+        ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_cols)
+    ],
+    # Giữ nguyên các cột số còn lại
+    remainder='passthrough'
 )
 
-# ==============================
-# TRAIN MODEL
-# ==============================
+# 4. Tạo Pipeline kết hợp preprocessor và Linear Regression
+pipeline = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('model', LinearRegression())
+])
 
-model = LinearRegression()
-model.fit(X_train, y_train)
+# Lưu trữ kết quả của các lần chạy
+results = []
 
-# ==============================
-# PREDICT
-# ==============================
+# 5. Vòng lặp 3 lần đánh giá
+for i in range(3):
+    # Bước 5.1: Shuffle dataset (BỎ random_state để trộn ngẫu nhiên 100% qua mỗi vòng lặp)
+    X_shuffled, y_shuffled = shuffle(X, y)
+    
+    # Bước 5.2: Split dataset 90% train - 10% test (BỎ random_state để chia ngẫu nhiên)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_shuffled, y_shuffled, 
+        test_size=0.1
+    )
+    
+    # Bước 5.3: Huấn luyện mô hình (Tìm hàm số f(x))
+    pipeline.fit(X_train, y_train)
+    
+    # Bước 5.4: Dự đoán trên tập Test
+    y_pred = pipeline.predict(X_test)
+    
+    # Bước 5.5: Đánh giá độ chính xác
+    r2 = r2_score(y_test, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    mae = mean_absolute_error(y_test, y_pred)
+    
+    # Lưu kết quả
+    results.append({
+        'Lần lặp': f'Lần {i + 1}',
+        'R2': r2,
+        'RMSE': rmse,
+        'MAE': mae
+    })
 
-y_pred = model.predict(X_test)
+# 6. Tạo bảng và tính trung bình
+results_df = pd.DataFrame(results)
 
-# ==============================
-# EVALUATE
-# ==============================
+# Tính trung bình các cột số
+mean_metrics = {
+    'Lần lặp': 'Trung bình',
+    'R2': results_df['R2'].mean(),
+    'RMSE': results_df['RMSE'].mean(),
+    'MAE': results_df['MAE'].mean()
+}
 
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
+# Thêm hàng trung bình vào cuối bảng
+final_df = pd.concat([results_df, pd.DataFrame([mean_metrics])], ignore_index=True)
 
-print("\n===== MODEL RESULT =====")
-print("MSE:", mse)
-print("R2 Score:", r2)
+# In kết quả
+print("Đánh giá độ chính xác (shuffle ngẫu nhiên hoàn toàn):\n")
+print(final_df.to_string(index=False))
