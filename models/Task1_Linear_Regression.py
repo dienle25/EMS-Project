@@ -26,38 +26,58 @@ if "student_id" in data.columns:
 data = pd.get_dummies(data)
 
 # ==============================
-# SPLIT DATA
+# PREPARE X y
 # ==============================
 
 X = data.drop("exam_score", axis=1)
 y = data["exam_score"]
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42
-)
-
 # ==============================
-# TRAIN MODEL
+# RUN MODEL 3 TIMES
 # ==============================
 
-model = LinearRegression()
-model.fit(X_train, y_train)
+r2_list = []
+
+for i in range(3):
+
+    print(f"\n===== RUN {i+1} =====")
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=i
+    )
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+
+    print("MSE:", mse)
+    print("R2 Score:", r2)
+
+    r2_list.append(r2)
 
 # ==============================
-# PREDICT
+# RESULT TABLE
 # ==============================
 
-y_pred = model.predict(X_test)
+result_df = pd.DataFrame({
+    "Run": [1, 2, 3],
+    "R2 Score": r2_list
+})
+
+print("\n===== RESULT TABLE =====")
+print(result_df)
 
 # ==============================
-# EVALUATE
+# AVERAGE R2
 # ==============================
 
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
+avg_r2 = result_df["R2 Score"].mean()
 
-print("\n===== MODEL RESULT =====")
-print("MSE:", mse)
-print("R2 Score:", r2)
+print("\nAverage R2 Score:", avg_r2)
