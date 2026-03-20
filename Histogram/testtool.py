@@ -1,31 +1,26 @@
 import pandas as pd
-from ydata_profiling import ProfileReport
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.tools.tools import add_constant
 
-# 1. Load bộ dữ liệu
-# Đảm bảo file data.csv nằm đúng thư mục
-file_path = r'D:\ADY201m\notebooks\dataADY201m_cleaned_normalized1.csv'
-df = pd.read_csv(file_path)
+# 1. Tải dữ liệu
+df = pd.read_csv(r'D:\ADY201m\notebooks\dataADY201m_cleaned_normalized1.csv')
 
-# 2. Khởi tạo báo cáo với cấu hình ĐÚNG VỊ TRÍ
-profile = ProfileReport(
-    df,
-    title="EWS Data Analysis Report - Verified Version",
-    explorative=True,
-    # Chuyển dark_mode vào trong html
-    html={
-        "dark_mode": True,
-        "full_width": True
-    },
-    # Chuyển author vào trong dataset
-    dataset={
-        "author": "Le Thanh Dien - Group 3",
-        "description": "Early Warning System Analysis",
-        "copyright_holder": "FPT University"
-    }
-)
+# 2. Loại bỏ biến phụ thuộc (Ví dụ: 'exam_score') để xét các biến độc lập
+X = df.drop(columns=['exam_score'])
 
-# 3. Xuất ra file HTML
-output_file = "EWS_Profile_Report_v2.html"
-profile.to_file(output_file)
+# 3. Chuyển đổi các cột kiểu boolean (True/False) sang số thực (float) để tính toán
+X = X.astype(float)
 
-print(f"SUCCESS: Report updated and saved to {output_file}!")
+# 4. Thêm hằng số (constant/intercept) vào dataframe (Khuyến nghị để tính VIF chuẩn xác)
+X_with_const = add_constant(X)
+
+# 5. Khởi tạo DataFrame để lưu kết quả và tính VIF cho từng biến
+vif_data = pd.DataFrame()
+vif_data["Feature"] = X_with_const.columns
+vif_data["VIF"] = [variance_inflation_factor(X_with_const.values, i) for i in range(X_with_const.shape[1])]
+
+# 6. Loại bỏ dòng 'const' ra khỏi kết quả hiển thị cuối cùng
+vif_data = vif_data[vif_data["Feature"] != "const"].reset_index(drop=True)
+
+# Hiển thị kết quả
+print(vif_data)
