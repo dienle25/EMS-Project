@@ -29,7 +29,7 @@ rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
 rf_model.fit(X_train, y_train)
 rf_preds = rf_model.predict(X_test)
 
-# Gom tất cả "Chất xám" vào 1 chiếc hộp (Dictionary)
+# Gom tất cả "Chất xám" vào 1 chiếc hộp
 ai_data = {
     'lr_model': lr_model,
     'rf_model': rf_model,
