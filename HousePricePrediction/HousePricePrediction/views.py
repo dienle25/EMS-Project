@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 import random
 import sqlite3
-import io  # Cần thêm cái này để đọc dữ liệu nhị phân
+import io
 
 from django.shortcuts import render, redirect
 from django.conf import settings
@@ -14,21 +14,16 @@ from ews.models import PredictionHistory, UserProfile
 
 # ================= 1. LOAD MÔ HÌNH AI TỪ SQLITE =================
 def load_model_from_sqlite():
-    """Hàm lấy model mới nhất từ bảng ai_model_storage trong SQLite"""
     try:
-        # Đường dẫn tới file db.sqlite3 của Django
         db_path = os.path.join(settings.BASE_DIR, 'db.sqlite3')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-
-        # Truy vấn lấy model mới nhất (ID cao nhất)
         cursor.execute("SELECT model_binary FROM ai_model_storage ORDER BY id DESC LIMIT 1")
         row = cursor.fetchone()
         conn.close()
 
         if row:
             model_binary = row[0]
-            # Giải nén dữ liệu nhị phân thành object Python
             ai_data = joblib.load(io.BytesIO(model_binary))
             print("SUCCESS: Da tai AI Model thanh cong tu SQLite!")
             return ai_data
@@ -36,15 +31,12 @@ def load_model_from_sqlite():
         print(f"WARNING: Khong the load model tu SQLite...: {e}")
     return None
 
-# Thực hiện load ngay khi khởi động server
 ai_data = load_model_from_sqlite()
-print(f"Dữ liệu ai_data lấy từ DB: {type(ai_data)}")
 if ai_data:
     lr_model = ai_data.get('lr_model')
     rf_model = ai_data.get('rf_model')
     ai_metrics = ai_data.get('metrics', {})
 else:
-    # Nếu DB chưa có model, hệ thống vẫn không bị crash
     lr_model, rf_model, ai_metrics = None, None, {}
 
 def get_ai_metrics():
@@ -63,7 +55,6 @@ def user_register(request):
         return redirect('login')
     return render(request, "register.html")
 
-
 def user_login(request):
     if request.method == "POST":
         u_name = request.POST.get("username")
@@ -76,7 +67,6 @@ def user_login(request):
             return render(request, "login.html", {"error": "Sai tài khoản hoặc mật khẩu!"})
     return render(request, "login.html")
 
-
 def user_logout(request):
     logout(request)
     return redirect('home')
@@ -86,26 +76,35 @@ def user_logout(request):
 def home(request):
     return render(request, "home.html")
 
-
 @login_required(login_url='/login/')
 def predict(request):
     return render(request, "predict.html", {"metrics": get_ai_metrics()})
-
 
 @login_required(login_url='/login/')
 def result(request):
     if lr_model is None or rf_model is None:
         return render(request, "predict.html",
-                      {"error": "Lỗi: Không tìm thấy file ai_models.joblib.", "metrics": get_ai_metrics()})
+                      {"error": "Lỗi: Chưa có mô hình AI trong Database. Vui lòng chạy file train_ai.py trước!", "metrics": get_ai_metrics()})
 
     try:
-        # 3.1 LẤY 9 FEATURES CHUẨN XÁC
-        study_hours = float(request.GET.get("study_hours", 0))
-        class_attendance = float(request.GET.get("class_attendance", 0))
-        sleep_hours = float(request.GET.get("sleep_hours", 0))
+        # Lấy dữ liệu RAW từ Form (Học/Ngủ: 0-12, Điểm danh: 0-100)
+        raw_study = float(request.GET.get("study_hours", 0))
+        raw_attendance = float(request.GET.get("class_attendance", 0))
+        raw_sleep = float(request.GET.get("sleep_hours", 0))
+        
+        # ⚠️ CHUẨN HÓA MIN-MAX SCALER (Khớp 100% Data Gốc AI)
+        study_hours = (raw_study - 0.08) / (7.91 - 0.08)
+        study_hours = max(0.0, min(1.0, study_hours))
+
+        class_attendance = (raw_attendance - 40.6) / (99.4 - 40.6)
+        class_attendance = max(0.0, min(1.0, class_attendance))
+
+        sleep_hours = (raw_sleep - 4.1) / (9.9 - 4.1)
+        sleep_hours = max(0.0, min(1.0, sleep_hours))
+
+        # Các biến còn lại
         sleep_quality = int(request.GET.get("sleep_quality", 0))
         facility_rating = int(request.GET.get("facility_rating", 0))
-
         study_method = request.GET.get("study_method", "self_study")
         selected_model = request.GET.get("ai_model", "rf")
 
@@ -124,7 +123,6 @@ def result(request):
             'study_method_online videos', 'study_method_self-study'
         ])
 
-        # 3.2 DỰ ĐOÁN
         if selected_model == "rf":
             prediction = rf_model.predict(input_data)[0]
             model_name = "Random Forest"
@@ -134,20 +132,19 @@ def result(request):
 
         final_score = round(max(0, min(100, prediction)), 2)
 
-        # 3.3 LƯU DATABASE
+        # Lưu thông số đã chuẩn hóa vào Database 
         PredictionHistory.objects.create(
             student=request.user, study_hours=study_hours, class_attendance=class_attendance,
             sleep_hours=sleep_hours, sleep_quality=sleep_quality, facility_rating=facility_rating,
             study_method=study_method, predicted_score=final_score
         )
 
-        # 3.4 GAMIFICATION: HUY HIỆU & EMOJI & ÂM THANH
+        # GAMIFICATION (Tính toán dựa trên số nhập thật của user)
         badges = []
-        if study_hours >= 0.8: badges.append({"icon": "🔥", "name": "Thánh Cày Cuốc", "color": "danger"})
-        if sleep_hours <= 0.3: badges.append({"icon": "🦉", "name": "Cú Đêm", "color": "dark"})
-        if class_attendance <= 0.4: badges.append({"icon": "🥷", "name": "Tàng Hình", "color": "secondary"})
-        if sleep_quality == 2 and facility_rating == 2: badges.append(
-            {"icon": "👑", "name": "Rich Kid", "color": "warning"})
+        if raw_study >= 8: badges.append({"icon": "🔥", "name": "Thánh Cày Cuốc", "color": "danger"})
+        if raw_sleep <= 5: badges.append({"icon": "🦉", "name": "Cú Đêm", "color": "dark"})
+        if raw_attendance <= 50: badges.append({"icon": "🥷", "name": "Tàng Hình", "color": "secondary"})
+        if sleep_quality == 2 and facility_rating == 2: badges.append({"icon": "👑", "name": "Rich Kid", "color": "warning"})
         if len(badges) == 0: badges.append({"icon": "🌱", "name": "Chăm Ngoan", "color": "success"})
 
         if final_score >= 80:
@@ -157,7 +154,6 @@ def result(request):
         else:
             warning_level, msg, emoji, sound_effect = "danger", "CẢNH BÁO NGUY CƠ RỚT!", "🥶", "lose"
 
-        # 3.5 GAMIFICATION: GACHA HỘP QUÀ
         show_gacha = True if final_score >= 70 else False
         gacha_quotes = [
             "Buff: +100% tự tin khi đi thi! 🚀",
@@ -167,7 +163,6 @@ def result(request):
         ]
         gacha_reward = random.choice(gacha_quotes) if show_gacha else ""
 
-        # 3.6 LEADERBOARD (Top 5 Cao thủ của cả lớp)
         leaderboard = PredictionHistory.objects.order_by('-predicted_score')[:5]
 
         return render(request, "predict.html", {

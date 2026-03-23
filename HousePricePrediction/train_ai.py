@@ -1,5 +1,7 @@
 import pandas as pd
 import joblib
+import sqlite3
+import io
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -8,7 +10,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 print("⏳ Đang đọc dữ liệu từ file CSV...")
 df = pd.read_csv('dataADY201m_reduced.csv')
 
-# Khóa cứng 9 features
+# Lấy đủ 9 features chuẩn như thiết kế ban đầu
 X = df[['study_hours', 'class_attendance', 'sleep_hours', 'sleep_quality',
         'facility_rating', 'study_method_group study', 'study_method_mixed',
         'study_method_online videos', 'study_method_self-study']]
@@ -39,6 +41,29 @@ ai_data = {
     }
 }
 
-print("📦 Đang đóng gói mô hình...")
-joblib.dump(ai_data, 'ai_models.joblib')
-print("✅ THÀNH CÔNG! Đã xuất file 'ai_models.joblib'. Bạn có thể xóa code train AI trong views.py được rồi!")
+print("📦 Đang đóng gói và lưu mô hình vào Database...")
+try:
+    # 1. Chuyển ai_data thành dữ liệu nhị phân (Binary)
+    buffer = io.BytesIO()
+    joblib.dump(ai_data, buffer)
+    model_binary = buffer.getvalue()
+
+    # 2. Kết nối Database
+    conn = sqlite3.connect('db.sqlite3')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ai_model_storage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            model_binary BLOB
+        )
+    ''')
+    
+    # 3. Thêm model vào bảng ai_model_storage
+    cursor.execute("INSERT INTO ai_model_storage (model_binary) VALUES (?)", (model_binary,))
+    
+    conn.commit()
+    conn.close()
+    print("✅ THÀNH CÔNG! Đã lưu mô hình AI vào Database (bảng ai_model_storage)!")
+except Exception as e:
+    print(f"❌ Lỗi khi lưu vào DB: {e}")
