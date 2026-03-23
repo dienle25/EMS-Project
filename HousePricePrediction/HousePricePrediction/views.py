@@ -94,6 +94,7 @@ def result(request):
         
         # ⚠️ CHUẨN HÓA MIN-MAX SCALER (Khớp 100% Data Gốc AI)
         study_hours = (raw_study - 0.08) / (7.91 - 0.08)
+
         study_hours = max(0.0, min(1.0, study_hours))
 
         class_attendance = (raw_attendance - 40.6) / (99.4 - 40.6)
@@ -134,11 +135,15 @@ def result(request):
 
         # Lưu thông số đã chuẩn hóa vào Database 
         PredictionHistory.objects.create(
-            student=request.user, study_hours=study_hours, class_attendance=class_attendance,
-            sleep_hours=sleep_hours, sleep_quality=sleep_quality, facility_rating=facility_rating,
-            study_method=study_method, predicted_score=final_score
+            student=request.user,
+            study_hours=raw_study,  # Dùng raw_study thay vì study_hours
+            class_attendance=raw_attendance,  # Dùng raw_attendance thay vì class_attendance
+            sleep_hours=raw_sleep,  # Dùng raw_sleep thay vì sleep_hours
+            sleep_quality=sleep_quality,
+            facility_rating=facility_rating,
+            study_method=study_method,
+            predicted_score=final_score
         )
-
         # GAMIFICATION (Tính toán dựa trên số nhập thật của user)
         badges = []
         if raw_study >= 8: badges.append({"icon": "🔥", "name": "Thánh Cày Cuốc", "color": "danger"})

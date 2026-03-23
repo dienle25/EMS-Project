@@ -138,7 +138,7 @@
                     <div class="row g-4">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Thời gian học (Giờ/ngày)</label>
-                            <input type="number" step="0.5" min="0" max="12" class="form-control form-control-lg" name="study_hours" id="in_study" required>
+                            <input type="number" step="0.5" min="0" max="24" class="form-control form-control-lg" name="study_hours" id="in_study" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Điểm danh (%)</label>
@@ -146,7 +146,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Thời gian ngủ (Giờ/ngày)</label>
-                            <input type="number" step="0.5" min="0" max="12" class="form-control form-control-lg" name="sleep_hours" id="in_sleep" required>
+                            <input type="number" step="0.5" min="0" max="24" class="form-control form-control-lg" name="sleep_hours" id="in_sleep" required>
                         </div>
                         
                         <div class="col-md-6">
@@ -185,31 +185,60 @@
 </div>
 
 <script>
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playTone(freq, type, duration, delay) {
-        setTimeout(() => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type; osc.frequency.value = freq;
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
-            osc.stop(audioCtx.currentTime + duration);
-        }, delay);
-    }
-
     const studyIn = document.getElementById('in_study');
     const sleepIn = document.getElementById('in_sleep');
     const mascot = document.getElementById('mascot');
     const dialog = document.getElementById('mascot-dialog');
 
-    if(studyIn) studyIn.addEventListener('input', (e) => {
-        if(e.target.value >= 8) { mascot.innerText = '🧠'; dialog.innerText = "Wow, cày cuốc thế này điểm cao là chắc!"; }
-        else { mascot.innerText = '🤖'; dialog.innerText = "Tiếp tục nhập đi nào..."; }
-    });
-    if(sleepIn) sleepIn.addEventListener('input', (e) => {
-        if(e.target.value < 5) { mascot.innerText = '😴'; dialog.innerText = "Bạn ngủ ít quá, lo sức khỏe đi nha!"; }
-    });
+    // Hàm kiểm tra tổng 24h
+    function checkTimeLimit(e) {
+        let studyVal = parseFloat(studyIn.value) || 0;
+        let sleepVal = parseFloat(sleepIn.value) || 0;
+
+        if (studyVal + sleepVal > 24) {
+            alert("⚠️ Tổng thời gian học và ngủ không được vượt quá 24 giờ/ngày!");
+
+            // Tự động ép giá trị về mức hợp lý
+            if (e.target === studyIn) {
+                studyIn.value = 24 - sleepVal;
+            } else {
+                sleepIn.value = 24 - studyVal;
+            }
+        } else {
+            // Giới hạn lại max của ô kia để không cho bấm mũi tên tăng lên lố 24h
+            studyIn.max = 24 - sleepVal;
+            sleepIn.max = 24 - studyVal;
+        }
+    }
+
+    // Tích hợp vào sự kiện input của ô Thời gian học
+    if(studyIn) {
+        studyIn.addEventListener('input', (e) => {
+            checkTimeLimit(e);
+
+            // Logic đổi Mascot cũ của bạn
+            if(parseFloat(e.target.value) >= 8) {
+                mascot.innerText = '🧠';
+                dialog.innerText = "Wow, cày cuốc thế này điểm cao là chắc!";
+            } else {
+                mascot.innerText = '🤖';
+                dialog.innerText = "Tiếp tục nhập đi nào...";
+            }
+        });
+    }
+
+    // Tích hợp vào sự kiện input của ô Thời gian ngủ
+    if(sleepIn) {
+        sleepIn.addEventListener('input', (e) => {
+            checkTimeLimit(e);
+
+            // Logic đổi Mascot cũ của bạn
+            if(parseFloat(e.target.value) < 5 && parseFloat(e.target.value) > 0) {
+                mascot.innerText = '😴';
+                dialog.innerText = "Bạn ngủ ít quá, lo sức khỏe đi nha!";
+            }
+        });
+    }
 
     window.onload = () => {
         const counter = document.getElementById('scoreCounter');
